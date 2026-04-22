@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_IMAGE = 'ouissal23/jenkins-pipeline'
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -24,13 +28,19 @@ pipeline {
 
         stage('Build') {
             steps {
-                echo 'Building...'
+                sh 'mvn clean package -DskipTests'
             }
         }
 
-        stage('Test') {
+        stage('Docker Build & Push') {
             steps {
-                echo 'Testing...'
+                withCredentials([usernamePassword(credentialsId: 'dockerHub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh """
+                        docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
+                        echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin
+                        docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
+                    """
+                }
             }
         }
 
